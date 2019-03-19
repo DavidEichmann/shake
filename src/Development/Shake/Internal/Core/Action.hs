@@ -310,18 +310,20 @@ lintTrackFinished = do
         bad <- return $ Set.toList $ used `Set.difference` Set.fromList deps
         unless (null bad) $ do
             let n = length bad
-            throwM $ errorStructured
-                ("Lint checking error - " ++ (if n == 1 then "value was" else show n ++ " values were") ++ " used but not depended upon")
-                [("Used", Just $ show x) | x <- bad]
+            globalOutput Normal $ displayException $ errorStructured
+                ("@@@U Lint checking error - " ++ showTopStack localStack ++ " - "
+                    ++ (if n == 1 then "value was" else show n ++ " values were") ++ " used but not depended upon")
+                [("@@@U Used", Just $ show x) | x <- bad]
                 ""
 
         -- check Read 4b
         bad <- flip filterM (Set.toList used) $ \k -> not . null <$> lookupDependencies globalDatabase k
         unless (null bad) $ do
             let n = length bad
-            throwM $ errorStructured
-                ("Lint checking error - " ++ (if n == 1 then "value was" else show n ++ " values were") ++ " depended upon after being used")
-                [("Used", Just $ show x) | x <- bad]
+            globalOutput Normal $ displayException $ errorStructured
+                ("@@@L Lint checking error - " ++ showTopStack localStack ++ " - "
+                    ++ (if n == 1 then "value was" else show n ++ " values were") ++ " depended upon after being used")
+                [("@@@L Used", Just $ show x) | x <- bad]
                 ""
 
         -- check Write 3
@@ -377,8 +379,10 @@ listDepends db (Depends xs) = mapM (fmap (fst . fromJust) . getKeyValueFromId db
 
 lookupDependencies :: Database -> Key -> IO [Depends]
 lookupDependencies db k = do
-    Just (Ready r) <- getValueFromKey db k
-    return $ depends r
+    rMay <- (getResult =<<) <$> getValueFromKey db k
+    return $ case rMay of
+        Nothing -> []
+        Just r  -> depends r
 
 
 -- | This rule should not be cached or recorded in the history because it makes use of untracked dependencies
