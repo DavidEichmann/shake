@@ -24,6 +24,11 @@ main = testBuildArgs test optionsEnum $ \args -> do
 
     "OutFile.txt" %> \out -> die $ copyFile' "In.txt" out
 
+    -- TODO Not on windows.
+    "OutFile.link.txt" %> \out -> die $ do
+        need ["In.txt"]
+        liftIO $ createFileLink "In.txt" out
+
     reader <- addOracleCache $ \x -> die (readFile' x)
     "OutOracle.txt" %> \out -> do
         historyDisable
@@ -35,7 +40,7 @@ main = testBuildArgs test optionsEnum $ \args -> do
 
 test build = do
     let setIn = writeFile "In.txt"
-    let outs = ["OutFile.txt","OutOracle.txt","OutFiles1.txt","OutFiles2.txt","Phony.txt"]
+    let outs = ["OutFile.txt","OutOracle.txt","OutFiles1.txt","OutFiles2.txt","Phony.txt","OutFile.link.txt"]
     let checkOut x = mapM_ (`assertContents` x) outs
 
     build ["clean"]
